@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>무역풍과 적도 태평양</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* 레이아웃: 위에 단면도(캔버스), 아래에 조작판과 계기, 맨 아래 기록표. 좁은 화면에서는 한 줄로 쌓인다. */
+:root{
+  --bg:#f3f6f8; --panel:#ffffff; --fg:#14222b; --muted:#5a6b76; --line:#d5dee4;
+  --accent:#0b6e8a; --sky:#dcecf6; --deep:#1d3f6e; --land:#8a7a5c;
+  --f-body:"Noto Sans KR",system-ui,sans-serif; --f-num:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f171d; --panel:#16222a; --fg:#e4edf2; --muted:#93a6b2; --line:#2a3a45;
+  --accent:#4fb3cf; --sky:#1b2c38; --deep:#0b1f3a; --land:#6f6248; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f171d; --panel:#16222a; --fg:#e4edf2; --muted:#93a6b2; --line:#2a3a45;
+  --accent:#4fb3cf; --sky:#1b2c38; --deep:#0b1f3a; --land:#6f6248; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.55}
+.wrap{max-width:980px;margin:0 auto;padding-block:20px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:16px}
+h1{font-size:1.45rem;margin:0;text-wrap:balance}
+.lead{margin:0;color:var(--muted)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;min-width:0}
+canvas{width:100%;height:auto;display:block;border-radius:6px}
+.grid{display:grid;grid-template-columns:1.1fr 1fr;gap:16px}
+@media (max-width:720px){.grid{grid-template-columns:1fr}}
+label{font-weight:700}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.scale{display:flex;justify-content:space-between;font-size:.8rem;color:var(--muted)}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+button{font:inherit;border:1px solid var(--accent);background:transparent;color:var(--accent);border-radius:8px;padding:8px 14px;cursor:pointer}
+button.primary{background:var(--accent);color:var(--panel)}
+button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.meters{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.m{border:1px solid var(--line);border-radius:8px;padding:10px;min-width:0}
+.m .k{font-size:.8rem;color:var(--muted)}
+.m .v{font-family:var(--f-num);font-size:1.35rem;font-variant-numeric:tabular-nums}
+.time{font-family:var(--f-num);color:var(--muted);font-size:.85rem}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;min-width:560px}
+th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:right}
+th:first-child,td:first-child{text-align:left}
+th{font-size:.8rem;color:var(--muted);font-weight:500}
+.note{font-size:.82rem;color:var(--muted);margin:0}
+.empty{color:var(--muted);text-align:left!important}
+</style>
+<style>body{margin:0}</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header style="display:grid;gap:4px">
+    <h1>무역풍과 적도 태평양</h1>
+    <p class="lead">무역풍 세기를 바꾸고 몇 달이 지나는 동안 태평양 서쪽과 동쪽의 바다가 어떻게 달라지는지 관찰하세요. 값을 기록해 CER의 증거로 씁니다.</p>
+  </header>
+
+  <section class="card" aria-label="적도 태평양 단면">
+    <canvas id="cv" width="960" height="420" role="img" aria-label="서쪽 인도네시아에서 동쪽 페루까지의 적도 태평양 단면. 따뜻한 표층수, 수온 약층, 바람, 용승, 비구름이 표시된다."></canvas>
+  </section>
+
+  <div class="grid">
+    <section class="card" aria-label="조작">
+      <label for="wind">무역풍 세기 (동쪽 → 서쪽으로 부는 바람)</label>
+      <input id="wind" type="range" min="0" max="100" step="5" value="50">
+      <div class="scale"><span>매우 약함</span><span>평상시</span><span>매우 강함</span></div>
+      <p style="margin:.4rem 0 0">현재 설정: <b id="windval">50 (평상시)</b></p>
+      <div class="row">
+        <button id="run" class="primary">▶ 시간 흐르게 하기</button>
+        <button id="rec">기록하기</button>
+        <button id="reset">처음 상태로</button>
+      </div>
+      <p class="time" id="clock" style="margin-top:10px">바람을 바꾼 뒤 0개월</p>
+      <p class="note">바람을 바꾸면 바다는 한 번에 바뀌지 않습니다. 시간을 흐르게 하고 약 6개월 뒤 값을 기록하세요.</p>
+    </section>
+
+    <section class="card" aria-label="측정값">
+      <div class="meters">
+        <div class="m"><div class="k">서쪽 표층 수온</div><div class="v" id="sw">-</div></div>
+        <div class="m"><div class="k">동쪽 표층 수온</div><div class="v" id="se">-</div></div>
+        <div class="m"><div class="k">동쪽 수온 약층 깊이</div><div class="v" id="he">-</div></div>
+        <div class="m"><div class="k">동쪽 용승 세기 (상대값)</div><div class="v" id="up">-</div></div>
+        <div class="m" style="grid-column:1/-1"><div class="k">비구름이 많은 곳</div><div class="v" id="rain" style="font-family:var(--f-body);font-size:1.05rem">-</div></div>
+      </div>
+    </section>
+  </div>
+
+  <section class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+      <h2 style="font-size:1.05rem;margin:0">내 기록표</h2>
+      <button id="copy">표 복사하기</button>
+    </div>
+    <div class="tbl" style="margin-top:8px">
+      <table>
+        <thead><tr><th>번호</th><th>무역풍 세기</th><th>경과 (개월)</th><th>서쪽 수온 (℃)</th><th>동쪽 수온 (℃)</th><th>동쪽 수온 약층 (m)</th><th>용승</th><th>비구름</th></tr></thead>
+        <tbody id="tb"><tr><td class="empty" colspan="8">아직 기록이 없습니다. 값을 정한 뒤 「기록하기」를 누르세요.</td></tr></tbody>
+      </table>
+    </div>
+    <p class="note" id="copymsg" style="margin-top:6px"></p>
+  </section>
+
+  <p class="note">교육용 단순 모형입니다. 수치는 실제 관측의 대략적인 범위를 흉내 낸 값이며, 대기와 지구 자전 효과는 단순화했습니다. 통합과학2 [10통과2-02-03] 수업용.</p>
+</div>
+
+<script>
+(()=>{
+const $=id=>document.getElementById(id);
+const cv=$('cv'),ctx=cv.getContext('2d');
+const W=cv.width,H=cv.height;
+function eq(w){return {hw:120+60*w, he:Math.max(20,120-140*w)};}
+function sstE(he){return 20+8.5*(1-Math.exp(-he/60));}
+function sstW(w){return 28.2+2.0*w;}
+function upv(he){return Math.max(0,(120-he)/100*10);}
+let w=0.5, st=eq(0.5), sw=sstW(0.5), months=0, running=false, last=0, rows=[];
+const TAU=2.2;
+function rainText(se,swv){const d=swv-se; if(d>3)return '서쪽 (인도네시아·호주 쪽)'; if(d>1.2)return '서쪽~중앙 태평양'; return '중앙~동쪽 (페루 쪽까지)';}
+function windLabel(v){if(v<=15)return '매우 약함'; if(v<40)return '약함'; if(v<=60)return '평상시'; if(v<85)return '강함'; return '매우 강함';}
+function draw(){
+  const css=getComputedStyle(document.documentElement), c=n=>css.getPropertyValue(n).trim();
+  ctx.clearRect(0,0,W,H);
+  const top=110,bottom=H-20,left=70,right=W-70,depthMax=220,y=d=>top+(d/depthMax)*(bottom-top);
+  ctx.fillStyle=c('--sky'); ctx.fillRect(0,0,W,top);
+  ctx.fillStyle=c('--deep'); ctx.fillRect(left,top,right-left,bottom-top);
+  const se=sstE(st.he), t=(se-20)/8.5;
+  const g=ctx.createLinearGradient(left,0,right,0);
+  g.addColorStop(0,'rgba(230,90,50,0.9)');
+  g.addColorStop(1,`rgba(230,${Math.round(150-60*t)},${Math.round(120-70*t)},${(0.25+0.65*t).toFixed(2)})`);
+  ctx.fillStyle=g; ctx.beginPath(); ctx.moveTo(left,top); ctx.lineTo(right,top); ctx.lineTo(right,y(st.he)); ctx.lineTo(left,y(st.hw)); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,0.85)'; ctx.setLineDash([6,5]); ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(left,y(st.hw)); ctx.lineTo(right,y(st.he)); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle=c('--land'); ctx.fillRect(0,top-30,left,bottom-top+30); ctx.fillRect(right,top-30,W-right,bottom-top+30);
+  ctx.textAlign='center'; ctx.fillStyle=c('--fg'); ctx.font='600 15px "Noto Sans KR",sans-serif';
+  ctx.fillText('서쪽',left/2,top-40); ctx.fillText('동쪽',right+(W-right)/2,top-40);
+  ctx.font='12px "Noto Sans KR",sans-serif'; ctx.fillStyle=c('--muted');
+  ctx.fillText('인도네시아',left/2,top-58); ctx.fillText('페루',right+(W-right)/2,top-58);
+  ctx.textAlign='left'; ctx.fillStyle='#fff'; ctx.font='13px "Noto Sans KR",sans-serif';
+  ctx.fillText('따뜻한 표층수',left+12,top+22); ctx.fillText('차가운 심층수',left+12,bottom-12);
+  ctx.textAlign='right'; ctx.fillText('수온 약층',right-12,Math.min(bottom-30,y(st.he)+18));
+  const n=Math.round(w*6);
+  ctx.strokeStyle=c('--fg'); ctx.fillStyle=c('--fg'); ctx.lineWidth=2.5;
+  for(let i=0;i<n;i++){const x0=right-40-i*((right-left-80)/6),x1=x0-60,yy=top-18;
+    ctx.beginPath(); ctx.moveTo(x0,yy); ctx.lineTo(x1,yy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x1,yy); ctx.lineTo(x1+10,yy-6); ctx.lineTo(x1+10,yy+6); ctx.closePath(); ctx.fill();}
+  ctx.textAlign='center'; ctx.font='12px "Noto Sans KR",sans-serif'; ctx.fillStyle=c('--muted');
+  ctx.fillText(n?'무역풍':'무역풍 거의 없음',(left+right)/2,top-34);
+  const up=upv(st.he)/10; ctx.strokeStyle='rgba(140,200,255,0.95)'; ctx.fillStyle='rgba(140,200,255,0.95)'; ctx.lineWidth=2;
+  for(let i=0;i<Math.round(up*4);i++){const x=right-30-i*22,y0=bottom-20,y1=y(st.he)-6;
+    ctx.beginPath(); ctx.moveTo(x,y0); ctx.lineTo(x,y1); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x,y1-6); ctx.lineTo(x-5,y1+3); ctx.lineTo(x+5,y1+3); ctx.closePath(); ctx.fill();}
+  const d=sw-se, frac=d>3?0.25:d>1.2?0.5:0.85, cx=left+(right-left)*frac*0.5, spread=(right-left)*frac*0.5;
+  ctx.fillStyle='rgba(120,130,145,0.85)';
+  for(let i=0;i<4;i++){const x=cx-spread*0.6+i*spread*0.4; ctx.beginPath(); ctx.ellipse(x,38,34,15,0,0,Math.PI*2); ctx.fill();}
+  ctx.strokeStyle='rgba(42,111,219,0.8)'; ctx.lineWidth=1.5;
+  for(let i=0;i<10;i++){const x=cx-spread*0.7+i*spread*0.15; ctx.beginPath(); ctx.moveTo(x,54); ctx.lineTo(x-4,68); ctx.stroke();}
+}
+function update(){
+  const se=sstE(st.he);
+  $('sw').textContent=sw.toFixed(1)+' ℃'; $('se').textContent=se.toFixed(1)+' ℃';
+  $('he').textContent=Math.round(st.he)+' m'; $('up').textContent=upv(st.he).toFixed(1)+' / 10';
+  $('rain').textContent=rainText(se,sw); $('clock').textContent='바람을 바꾼 뒤 '+Math.floor(months)+'개월';
+  draw();
+}
+function stopRun(){running=false; $('run').textContent='▶ 시간 흐르게 하기';}
+function step(t){
+  if(!running)return;
+  const dt=Math.min(0.1,(t-last)/1000); last=t;
+  const dm=dt*2; months+=dm;
+  const e=eq(w), k=1-Math.exp(-dm/TAU);
+  st.hw+=(e.hw-st.hw)*k; st.he+=(e.he-st.he)*k; sw+=(sstW(w)-sw)*k;
+  update();
+  if(months>=12){stopRun(); return;}
+  requestAnimationFrame(step);
+}
+$('wind').addEventListener('input',e=>{w=e.target.value/100; months=0; $('windval').textContent=e.target.value+' ('+windLabel(+e.target.value)+')'; update();});
+$('run').addEventListener('click',()=>{
+  if(running){stopRun(); return;}
+  if(months>=12)months=0;
+  running=true; $('run').textContent='⏸ 멈추기'; last=performance.now(); requestAnimationFrame(step);
+});
+$('reset').addEventListener('click',()=>{stopRun(); w=0.5; $('wind').value=50; $('windval').textContent='50 (평상시)'; st=eq(0.5); sw=sstW(0.5); months=0; update();});
+function renderRows(){
+  const tb=$('tb');
+  if(!rows.length){tb.innerHTML='<tr><td class="empty" colspan="8">아직 기록이 없습니다. 값을 정한 뒤 「기록하기」를 누르세요.</td></tr>';return;}
+  tb.innerHTML=rows.map((r,i)=>`<tr><td>${i+1}</td><td>${r.wind}</td><td>${r.m}</td><td>${r.sw}</td><td>${r.se}</td><td>${r.he}</td><td>${r.up}</td><td>${r.rain}</td></tr>`).join('');
+}
+$('rec').addEventListener('click',()=>{const se=sstE(st.he);
+  rows.push({wind:$('wind').value,m:Math.floor(months),sw:sw.toFixed(1),se:se.toFixed(1),he:Math.round(st.he),up:upv(st.he).toFixed(1),rain:rainText(se,sw)}); renderRows();});
+$('copy').addEventListener('click',()=>{
+  const head='번호\t무역풍 세기\t경과(개월)\t서쪽 수온(℃)\t동쪽 수온(℃)\t동쪽 수온 약층(m)\t용승\t비구름';
+  const txt=[head,...rows.map((r,i)=>[i+1,r.wind,r.m,r.sw,r.se,r.he,r.up,r.rain].join('\t'))].join('\n');
+  const msg=$('copymsg');
+  if(!navigator.clipboard){msg.textContent='복사가 막혀 있습니다. 표를 직접 드래그해 복사하세요.';return;}
+  navigator.clipboard.writeText(txt).then(()=>{msg.textContent='표를 복사했습니다. 활동지나 AI 프롬프트에 붙여 넣으세요.';}).catch(()=>{msg.textContent='복사가 막혀 있습니다. 표를 직접 드래그해 복사하세요.';});
+});
+try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',draw);}catch(e){}
+update();
+})();
+</script>
+</body>
+</html>
