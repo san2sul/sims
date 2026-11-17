@@ -192,7 +192,7 @@ $('copy').addEventListener('click',()=>{
   const txt=[head,...rows.map((r,i)=>[i+1,r.wind,r.m,r.sw,r.se,r.he,r.up,r.rain].join('\t'))].join('\n');
   const msg=$('copymsg');
   if(!navigator.clipboard){msg.textContent='복사가 막혀 있습니다. 표를 직접 드래그해 복사하세요.';return;}
-  navigator.clipboard.writeText(txt).then(()=>{msg.textContent='표를 복사했습니다. 활동지나 AI 프롬프트에 붙여 넣으세요.';}).catch(()=>{msg.textContent='복사가 막혀 있습니다. 표를 직접 드래그해 복사하세요.';});
+  navigator.clipboard.writeText(txt).then(()=>{msg.textContent='표를 복사했습니다. 학습지에 붙여 넣으세요.';}).catch(()=>{msg.textContent='복사가 막혀 있습니다. 표를 직접 드래그해 복사하세요.';});
 });
 try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',draw);}catch(e){}
 update();
